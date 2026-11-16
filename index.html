@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC-ServerOps | Administración y Soporte de Servidores Minecraft</title>
+    <style>
+        /* =====================================================================
+       VARIABLES Y RESET GLOBAL
+       ===================================================================== */
+        :root {
+            --bg-body: #0c0e12;
+            --bg-surface: #141820;
+            --bg-card: #1b202b;
+            --bg-card-hover: #222836;
+            --border-color: #2c3344;
+            --primary: #22c55e;
+            /* Verde Esmeralda Minecraft */
+            --primary-dark: #16a34a;
+            --accent: #38bdf8;
+            /* Azul Diamante */
+            --warning: #f59e0b;
+            /* Oro / Redstone Alert */
+            --danger: #ef4444;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(34, 197, 94, 0.08), transparent 35%),
+                radial-gradient(circle at 85% 90%, rgba(56, 189, 248, 0.08), transparent 35%);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            line-height: 1.65;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* =====================================================================
+       MENÚ DINÁMICO DE OPCIONES (100% CSS PURO)
+       ===================================================================== */
+        .navbar {
+            background: rgba(20, 24, 32, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 70px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: 0.5px;
+        }
+
+        .logo-cube {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary) 32%, #784b2a 32%, #5c371d 100%);
+            border: 2px solid #000;
+            border-radius: 4px;
+            box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        /* Checkbox oculto para menú móvil CSS */
+        #menu-toggle {
+            display: none;
+        }
+
+        .menu-icon {
+            display: none;
+            font-size: 1.6rem;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            position: relative;
+            transition: color 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
+        }
+
+        /* Subrayado animado dinámico */
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            bottom: 4px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transform-origin: center;
+            transition: transform 0.25s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background-color: var(--bg-card);
+            transform: translateY(-1px);
+        }
+
+        .nav-link:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* Submenú desplegable dinámico con hover */
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 230px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: 3px solid var(--primary);
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+            list-style: none;
+            padding: 8px 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+        }
+
+        .nav-item:hover .dropdown-menu,
+        .nav-item:focus-within .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 10px 18px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s, color 0.2s, padding-left 0.2s;
+        }
+
+        .dropdown-menu a:hover {
+            background: var(--bg-card-hover);
+            color: var(--primary);
+            padding-left: 24px;
+        }
+
+        /* =====================================================================
+       HERO BANNER
+       ===================================================================== */
+        .hero {
+            max-width: 1140px;
+            margin: 35px auto 10px;
+            padding: 45px 32px;
+            background: linear-gradient(135deg, var(--bg-surface) 0%, #10141c 100%);
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--primary);
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.14);
+            color: var(--primary);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 14px;
+        }
+
+        .hero h1 {
+            font-size: clamp(1.9rem, 4vw, 2.8rem);
+            line-height: 1.2;
+            margin-bottom: 14px;
+        }
+
+        .hero p {
+            color: var(--text-muted);
+            max-width: 720px;
+            font-size: 1.05rem;
+            margin-bottom: 24px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 22px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: transform 0.2s, filter 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #052e16;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        /* =====================================================================
+       SECCIONES GENERALES
+       ===================================================================== */
+        main {
+            max-width: 1140px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        .section {
+            padding: 40px 0 15px;
+            scroll-margin-top: 75px;
+        }
+
+        /* Resaltado dinámico cuando se selecciona desde el menú (:target) */
+        .section:target .section-header h2 {
+            color: var(--primary);
+        }
+
+        .section-header {
+            margin-bottom: 26px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.75rem;
+            transition: color 0.3s ease;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 0.98rem;
+            margin-top: 4px;
+        }
+
+        /* =====================================================================
+       1. INFORMACIÓN BÁSICA (TARJETAS Y TABLA DE MOTORES)
+       ===================================================================== */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .card-icon {
+            font-size: 1.7rem;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .code-pill {
+            display: inline-block;
+            margin-top: 12px;
+            background: #0b0d11;
+            border: 1px solid var(--border-color);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        /* Tabla comparativa de Software de Servidor */
+        .table-wrapper {
+            overflow-x: auto;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-card);
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* =====================================================================
+       2. PROBLEMAS Y SOLUCIONES (ACORDEÓN NATIVO HTML5 + CSS)
+       ===================================================================== */
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        details {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.25s ease;
+        }
+
+        details[open] {
+            border-color: var(--accent);
+        }
+
+        summary {
+            padding: 18px 22px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            transition: background 0.2s;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .problem-tag {
+            font-size: 0.78rem;
+            font-family: var(--font-mono);
+            padding: 3px 9px;
+            border-radius: 4px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            flex-shrink: 0;
+        }
+
+        .summary-arrow {
+            color: var(--primary);
+            font-weight: bold;
+            transition: transform 0.25s ease;
+        }
+
+        details[open] .summary-arrow {
+            transform: rotate(90deg);
+        }
+
+        .solution-body {
+            padding: 20px 22px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .solution-body strong {
+            color: var(--text-main);
+        }
+
+        .solution-steps {
+            margin: 12px 0 0 20px;
+        }
+
+        .solution-steps li {
+            margin-bottom: 8px;
+        }
+
+        pre {
+            background: #090b0f;
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        /* =====================================================================
+       3. FOOTER CON INFORMACIÓN DE CONTACTO
+       ===================================================================== */
+        footer {
+            background: #090b0e;
+            border-top: 2px solid var(--border-color);
+            margin-top: 50px;
+            padding: 45px 20px 25px;
+        }
+
+        .footer-container {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .footer-col h4 {
+            color: var(--text-main);
+            font-size: 1.1rem;
+            margin-bottom: 14px;
+            position: relative;
+            padding-bottom: 8px;
+        }
+
+        .footer-col h4::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 36px;
+            height: 2px;
+            background: var(--primary);
+        }
+
+        .footer-col p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        .contact-list {
+            list-style: none;
+        }
+
+        .contact-list li {
+            color: var(--text-muted);
+            font-size: 0.94rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .contact-list a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .contact-list a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-bottom {
+            max-width: 1140px;
+            margin: 20px auto 0;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* =====================================================================
+       DISEÑO RESPONSIVO (MÓVILES)
+       ===================================================================== */
+        @media (max-width: 768px) {
+            .menu-icon {
+                display: block;
+            }
+
+            .nav-menu {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px 0 18px;
+                border-top: 1px solid var(--border-color);
+            }
+
+            #menu-toggle:checked~.nav-menu {
+                display: flex;
+            }
+
+            .dropdown-menu {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                box-shadow: none;
+                border: 0;
+                border-left: 2px solid var(--primary);
+                margin-left: 16px;
+                background: transparent;
+            }
+
+            summary {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- MENÚ DINÁMICO DE OPCIONES (HTML + CSS PURO) -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#inicio" class="logo">
+                <div class="logo-cube" aria-hidden="true"></div>
+                MC-<span>ServerOps</span>
+            </a>
+
+            <!-- Control hamburguesa CSS para pantallas pequeñas -->
+            <input type="checkbox" id="menu-toggle">
+            <label for="menu-toggle" class="menu-icon" aria-label="Abrir menú">&#9776;</label>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#inicio" class="nav-link">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#informacion-basica" class="nav-link">Información Básica ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#conceptos-clave">Arquitectura y Puertos</a></li>
+                        <li><a href="#motores-servidor">Comparativa de Motores</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a href="#problemas-soluciones" class="nav-link">Problemas y Soluciones ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#prob-conexion">Errores de Conexión / Puerto</a></li>
+                        <li><a href="#prob-lag">Caída de TPS y Lag</a></li>
+                        <li><a href="#prob-ram">Error OutOfMemoryError</a></li>
+                        <li><a href="#prob-auth">Autenticación y Whitelist</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a href="#contacto" class="nav-link">Contacto</a>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <main>
+        <!-- PORTADA -->
+        <section id="inicio" class="hero">
+            <span class="hero-badge">Guía Técnica &amp; Administración</span>
+            <h1>Infraestructura y Soporte de Servidores de Minecraft</h1>
+            <p>
+                Portal técnico diseñado para comprender cómo funciona un servidor multijugador de Minecraft, elegir el
+                software adecuado según los recursos del host y diagnosticar los errores más frecuentes en producción.
+            </p>
+            <div class="hero-actions">
+                <a href="#informacion-basica" class="btn btn-primary">Explorar Información Básica</a>
+                <a href="#problemas-soluciones" class="btn btn-outline">Ver Problemas y Soluciones</a>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 1: INFORMACIÓN BÁSICA -->
+        <section id="informacion-basica" class="section">
+            <div class="section-header">
+                <h2>1. Información Básica de un Servidor</h2>
+                <p>Fundamentos esenciales de red, hardware y software para desplegar un mundo multijugador estable.</p>
+            </div>
+
+            <div id="conceptos-clave" class="info-grid">
+                <article class="card">
+                    <span class="card-icon">🌐</span>
+                    <h3>Red y Puerto por Defecto</h3>
+                    <p>
+                        Minecraft Java Edition utiliza por defecto el puerto TCP <strong>25565</strong> (mientras que
+                        Bedrock emplea UDP <strong>19132</strong>). Para permitir conexiones externas es indispensable
+                        abrir el puerto en el firewall del sistema operativo y en las reglas de red del proveedor.
+                    </p>
+                    <span class="code-pill">TCP 25565 · server.properties</span>
+                </article>
+
+                <article class="card">
+                    <span class="card-icon">⚙️</span>
+                    <h3>Rendimiento y Tick Rate (TPS)</h3>
+                    <p>
+                        El motor del juego procesa la física, entidades y redstone a <strong>20 ticks por segundo
+                            (TPS)</strong>. Si el procesador se satura, los TPS caen por debajo de 20, provocando
+                        retraso en bloques y movimiento. El rendimiento depende principalmente de la velocidad por
+                        núcleo (Single-Thread).
+                    </p>
+                    <span class="code-pill">20 TPS = 50ms por tick</span>
+                </article>
+
+                <article class="card">
+                    <span class="card-icon">💾</span>
+                    <h3>Gestión de Memoria RAM (JVM)</h3>
+                    <p>
+                        Asignar demasiada memoria sin optimizar el recolector de basura (Garbage Collector) provoca
+                        pausas bruscas. Se recomienda equilibrar los parámetros <code>-Xms</code> y <code>-Xmx</code>
+                        utilizando las banderas de Aikar con Java 21.
+                    </p>
+                    <span class="code-pill">-Xms4G -Xmx4G -XX:+UseG1GC</span>
+                </article>
+            </div>
+
+            <div id="motores-servidor" class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Motor / Software</th>
+                            <th>Tipo de Uso</th>
+                            <th>Soporte Plugins / Mods</th>
+                            <th>Rendimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Vanilla Oficial</strong></td>
+                            <td>Experiencia original de Mojang</td>
+                            <td>Ninguno</td>
+                            <td>Bajo (sin optimizaciones de chunks)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PaperMC / Purpur</strong></td>
+                            <td>Servidores públicos, SMP y minijuegos</td>
+                            <td>Plugins (Bukkit / Spigot)</td>
+                            <td>Alto (parches asíncronos y control de entidades)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fabric / NeoForge</strong></td>
+                            <td>Servidores técnicos o con mods pesados</td>
+                            <td>Mods (Lithium, Sodium, etc.)</td>
+                            <td>Medio / Alto (según carga de mods)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Velocity / BungeeCord</strong></td>
+                            <td>Proxy para conectar múltiples servidores</td>
+                            <td>Plugins de red / proxy</td>
+                            <td>Muy Alto (enrutamiento de tráfico)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: PROBLEMAS Y SOLUCIONES -->
+        <section id="problemas-soluciones" class="section">
+            <div class="section-header">
+                <h2>2. Problemas Comunes y Soluciones</h2>
+                <p>Haz clic sobre cada incidencia para desplegar el diagnóstico y los pasos de resolución.</p>
+            </div>
+
+            <div class="faq-list">
+                <!-- Problema 1 -->
+                <details id="prob-conexion" open>
+                    <summary>
+                        <span>Error "Connection timed out: getsockopt" al intentar entrar</span>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="problem-tag">RED / FIREWALL</span>
+                            <span class="summary-arrow">▶</span>
+                        </div>
+                    </summary>
+                    <div class="solution-body">
+                        <strong>Causa:</strong> El cliente envía paquetes hacia la IP del servidor, pero un firewall
+                        (UFW, iptables, Windows Defender o el Security Group de la nube) está descartando las peticiones
+                        en el puerto 25565.
+                        <ol class="solution-steps">
+                            <li>Verifica que el servidor esté escuchando en todas las interfaces dejando
+                                <code>server-ip=</code> en blanco dentro de <code>server.properties</code>.</li>
+                            <li>Permite el tráfico TCP en el puerto 25565 dentro del firewall del servidor Linux:</li>
+                        </ol>
+                        <pre>sudo ufw allow 25565/tcp
+sudo ufw reload</pre>
+                    </div>
+                </details>
+
+                <!-- Problema 2 -->
+                <details id="prob-lag">
+                    <summary>
+                        <span>Caída severa de TPS y mensaje "Can't keep up! Is the server overloaded?"</span>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="problem-tag">RENDIMIENTO / CPU</span>
+                            <span class="summary-arrow">▶</span>
+                        </div>
+                    </summary>
+                    <div class="solution-body">
+                        <strong>Causa:</strong> Generación simultánea de chunks nuevos cuando varios jugadores exploran
+                        rápido, o exceso de entidades acumuladas en granjas automáticas.
+                        <ol class="solution-steps">
+                            <li>Migra el núcleo de Vanilla a <strong>PaperMC</strong> para habilitar el guardado y carga
+                                asíncrona de chunks.</li>
+                            <li>Reduce la distancia de simulación en <code>server.properties</code> de 10 a <strong>6 u
+                                    8 chunks</strong>.</li>
+                            <li>Pre-genera el mapa usando el plugin <em>Chunky</em> antes de abrir el servidor al
+                                público.</li>
+                        </ol>
+                    </div>
+                </details>
+
+                <!-- Problema 3 -->
+                <details id="prob-ram">
+                    <summary>
+                        <span>Cierre repentino del servidor por "java.lang.OutOfMemoryError: Java heap space"</span>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="problem-tag">MEMORIA JVM</span>
+                            <span class="summary-arrow">▶</span>
+                        </div>
+                    </summary>
+                    <div class="solution-body">
+                        <strong>Causa:</strong> La máquina virtual de Java alcanzó el límite máximo de memoria asignada
+                        y no pudo liberar objetos en uso.
+                        <ol class="solution-steps">
+                            <li>Aumenta el parámetro <code>-Xmx</code> dejando al menos 1.5 GB libres para el sistema
+                                operativo (por ejemplo, en un VPS de 6 GB, asigna 4.5 GB a Minecraft).</li>
+                            <li>Ejecuta el servidor con parámetros optimizados de recolección de basura:</li>
+                        </ol>
+                        <pre>java -Xms4G -Xmx4G -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar server.jar nogui</pre>
+                    </div>
+                </details>
+
+                <!-- Problema 4 -->
+                <details id="prob-auth">
+                    <summary>
+                        <span>Error "Failed to verify username!" al conectarse jugadores</span>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="problem-tag">AUTENTICACIÓN</span>
+                            <span class="summary-arrow">▶</span>
+                        </div>
+                    </summary>
+                    <div class="solution-body">
+                        <strong>Causa:</strong> El servidor tiene activada la verificación contra los servidores de
+                        sesión de Mojang/Microsoft (<code>online-mode=true</code>) y el jugador intenta ingresar con una
+                        sesión inválida, sin conexión o desde un cliente no autenticado.
+                        <ol class="solution-steps">
+                            <li>Si todos los jugadores poseen cuenta oficial, basta con reiniciar el launcher para
+                                renovar el token de sesión de Microsoft.</li>
+                            <li>Si es una red privada o híbrida, ajusta <code>online-mode</code> en
+                                <code>server.properties</code> e instala un plugin de autenticación (como
+                                <em>AuthMe</em>) junto con <em>SkinRestorer</em> para proteger las cuentas.</li>
+                        </ol>
+                    </div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER CON INFORMACIÓN DE CONTACTO -->
+    <footer id="contacto">
+        <div class="footer-container">
+            <div class="footer-col">
+                <h4>MC-ServerOps</h4>
+                <p>
+                    Documentación técnica, despliegue y administración de servidores multijugador de Minecraft sobre
+                    entornos Linux y nube.
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h4>Navegación Rápida</h4>
+                <ul class="contact-list">
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#informacion-basica">Información Básica</a></li>
+                    <li><a href="#problemas-soluciones">Problemas y Soluciones</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Información de Contacto</h4>
+                <ul class="contact-list">
+                    <li>👤 <strong>Administrador:</strong> Keny — Ing. en Desarrollo de Software</li>
+                    <li>📧 <strong>Correo:</strong> <a
+                            href="mailto:soporte@mc-serverops.net">soporte@mc-serverops.net</a></li>
+                    <li>💬 <strong>Discord:</strong> kenyuwu#0001 / Servidor Oficial</li>
+                    <li>📍 <strong>Ubicación:</strong> El Salvador (UTC-6)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span>&copy; 2026 MC-ServerOps. Desarrollado únicamente con HTML5 y CSS3.</span>
+            <span>No afiliado con Mojang Studios ni Microsoft.</span>
+        </div>
+    </footer>
+
+</body>
+
+</html>
